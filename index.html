@@ -390,55 +390,76 @@ document.getElementById('help-close').addEventListener('click',()=>document.getE
 </script>
 
 <!-- ════════════════════ CAPA SOCIAL · playhtml ════════════════════ -->
-<!-- nodos ocultos que playhtml sincroniza automáticamente via can-play -->
+<!-- nodos can-play: playhtml sincroniza su estado entre visitantes -->
 <div id="ph-echoes" can-play style="display:none" data-default-data='{"items":[]}'></div>
 <div id="ph-ink"    can-play style="display:none" data-default-data='{"items":[]}'></div>
 <div id="ph-msgs"   can-play style="display:none" data-default-data='{"items":[]}'></div>
 
 <script type="module">
-(async ()=>{
+import { playhtml } from "https://unpkg.com/playhtml";
+
+playhtml.init({
+  cursors: { enabled: true }
+});
+
+// esperar a que playhtml termine de escanear los can-play del DOM
+setTimeout(()=>{
   try{
-    const { playhtml } = await import("https://unpkg.com/playhtml@latest");
-    window.playhtml = playhtml;
-    await playhtml.init({ cursors:{ enabled:true } });
+    const echoEl = document.getElementById('ph-echoes');
+    const inkEl  = document.getElementById('ph-ink');
+    const msgEl  = document.getElementById('ph-msgs');
+
+    // playhtml guarda su instancia interna en el elemento
+    // leer datos compartidos por polling
+    setInterval(()=>{
+      try{
+        if(echoEl?.__playhtml?.data) EE.applyEchoes(echoEl.__playhtml.data.items||[]);
+        if(inkEl?.__playhtml?.data)  EE.applyInk(inkEl.__playhtml.data.items||[]);
+        if(msgEl?.__playhtml?.data)  EE.applyMsgs(msgEl.__playhtml.data.items||[]);
+      }catch(e){}
+    }, 900);
 
     const cap=(arr,n)=>{ if(arr.length>n) arr.splice(0,arr.length-n); };
 
-    // helper: obtener el elemento can-play y leer/escribir su estado compartido
-    function getEl(id){ return document.getElementById(id)?.__playhtml; }
-
-    // escuchar cambios entrantes
-    const poll = setInterval(()=>{
-      try{
-        const pe=getEl('ph-echoes'), pi=getEl('ph-ink'), pm=getEl('ph-msgs');
-        if(pe) EE.applyEchoes((pe.data?.items)||[]);
-        if(pi) EE.applyInk  ((pi.data?.items)||[]);
-        if(pm) EE.applyMsgs ((pm.data?.items)||[]);
-      }catch(e){}
-    }, 800);
-
     EE.publishEcho=(nx,ny,str)=>{
-      try{ const pe=getEl('ph-echoes'); if(!pe) return;
-        const d={...pe.data}; d.items=[...d.items,{id:EE.clientId+'-'+(EE.seq++),nx,ny,str,t:Date.now()}]; cap(d.items,40); pe.setData(d); }catch(e){}};
+      try{
+        const ph=echoEl?.__playhtml; if(!ph) return;
+        const d=structuredClone(ph.data); d.items.push({id:EE.clientId+'-'+(EE.seq++),nx,ny,str,t:Date.now()}); cap(d.items,40);
+        ph.setData(d);
+      }catch(e){ console.warn('publishEcho',e); }
+    };
     EE.publishMsg=(m)=>{
-      try{ const pm=getEl('ph-msgs'); if(!pm) return;
-        const d={...pm.data}; d.items=[...d.items,{id:m.id,text:m.text,nx:m.nx,ny:m.ny,hue:m.hue,t:Date.now()}]; cap(d.items,18); pm.setData(d); }catch(e){}};
+      try{
+        const ph=msgEl?.__playhtml; if(!ph) return;
+        const d=structuredClone(ph.data); d.items.push({id:m.id,text:m.text,nx:m.nx,ny:m.ny,hue:m.hue,t:Date.now()}); cap(d.items,18);
+        ph.setData(d);
+      }catch(e){ console.warn('publishMsg',e); }
+    };
     EE.publishInk=(s)=>{
-      try{ const pi=getEl('ph-ink'); if(!pi) return;
-        const d={...pi.data}; d.items=[...d.items,{id:s.id,pts:s.pts,hue:s.hue}]; cap(d.items,30); pi.setData(d); }catch(e){}};
+      try{
+        const ph=inkEl?.__playhtml; if(!ph) return;
+        const d=structuredClone(ph.data); d.items.push({id:s.id,pts:s.pts,hue:s.hue}); cap(d.items,30);
+        ph.setData(d);
+      }catch(e){ console.warn('publishInk',e); }
+    };
 
-    EE.offline=false; EE.status('en red · playhtml');
-
-    // contador de presencia via cursors
-    const updCount=()=>{
-      try{ const cols=window.__playhtml_cursors?.colors||[]; const el=document.getElementById('r-here'); if(el) el.textContent=Math.max(1,cols.length); }catch(e){}};
-    setInterval(updCount,2500); updCount();
-
+    EE.offline=false;
+    EE.status('en red · playhtml');
+    console.log('playhtml conectado');
   }catch(err){
-    console.warn('playhtml no disponible, corriendo en solitario:',err);
+    console.warn('playhtml: error post-init',err);
     EE.status('solo · sin red colaborativa');
   }
-})();
+}, 2000);
+
+// presencia: contar cursores visibles en el DOM
+setInterval(()=>{
+  try{
+    const dots = document.querySelectorAll('[data-playhtml-cursor],.playhtml-cursor,.ph-cursor');
+    const el = document.getElementById('r-here');
+    if(el) el.textContent = Math.max(1, dots.length + 1);
+  }catch(e){}
+}, 3000);
 </script>
 </body>
 </html>
