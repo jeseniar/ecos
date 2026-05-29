@@ -390,34 +390,50 @@ document.getElementById('help-close').addEventListener('click',()=>document.getE
 </script>
 
 <!-- ════════════════════ CAPA SOCIAL · playhtml ════════════════════ -->
+<!-- nodos ocultos que playhtml sincroniza automáticamente via can-play -->
+<div id="ph-echoes" can-play style="display:none" data-default-data='{"items":[]}'></div>
+<div id="ph-ink"    can-play style="display:none" data-default-data='{"items":[]}'></div>
+<div id="ph-msgs"   can-play style="display:none" data-default-data='{"items":[]}'></div>
+
 <script type="module">
 (async ()=>{
   try{
-    const { playhtml } = await import("https://unpkg.com/playhtml");
+    const { playhtml } = await import("https://unpkg.com/playhtml@latest");
     window.playhtml = playhtml;
-    // sala fija: así la presencia (cursores) es la MISMA en local, github pages y dominio propio.
-    // los buses de datos (ecos/mensajes/dibujos) ya son globales por nombre.
-    playhtml.init({ cursors:{ enabled:true, room:()=>"endless-echo" } });
-
-    // buses globales (no atados a ningún nodo)
-    const echoBus = playhtml.createPageData("ee-echoes",   { items:[] });
-    const msgBus  = playhtml.createPageData("ee-messages", { items:[] });
-    const inkBus  = playhtml.createPageData("ee-ink",      { items:[] });
-
-    echoBus.onUpdate(d => EE.applyEchoes(d.items||[]));
-    msgBus .onUpdate(d => EE.applyMsgs (d.items||[]));
-    inkBus .onUpdate(d => EE.applyInk  (d.items||[]));
+    await playhtml.init({ cursors:{ enabled:true } });
 
     const cap=(arr,n)=>{ if(arr.length>n) arr.splice(0,arr.length-n); };
-    EE.publishEcho=(nx,ny,str)=> echoBus.setData(dr=>{ dr.items.push({id:EE.clientId+'-'+(EE.seq++),nx,ny,str,t:Date.now()}); cap(dr.items,40); });
-    EE.publishMsg =(m)=> msgBus.setData(dr=>{ dr.items.push({id:m.id,text:m.text,nx:m.nx,ny:m.ny,hue:m.hue,t:Date.now()}); cap(dr.items,18); });
-    EE.publishInk =(s)=> inkBus.setData(dr=>{ dr.items.push({id:s.id,pts:s.pts,hue:s.hue}); cap(dr.items,30); });
+
+    // helper: obtener el elemento can-play y leer/escribir su estado compartido
+    function getEl(id){ return document.getElementById(id)?.__playhtml; }
+
+    // escuchar cambios entrantes
+    const poll = setInterval(()=>{
+      try{
+        const pe=getEl('ph-echoes'), pi=getEl('ph-ink'), pm=getEl('ph-msgs');
+        if(pe) EE.applyEchoes((pe.data?.items)||[]);
+        if(pi) EE.applyInk  ((pi.data?.items)||[]);
+        if(pm) EE.applyMsgs ((pm.data?.items)||[]);
+      }catch(e){}
+    }, 800);
+
+    EE.publishEcho=(nx,ny,str)=>{
+      try{ const pe=getEl('ph-echoes'); if(!pe) return;
+        const d={...pe.data}; d.items=[...d.items,{id:EE.clientId+'-'+(EE.seq++),nx,ny,str,t:Date.now()}]; cap(d.items,40); pe.setData(d); }catch(e){}};
+    EE.publishMsg=(m)=>{
+      try{ const pm=getEl('ph-msgs'); if(!pm) return;
+        const d={...pm.data}; d.items=[...d.items,{id:m.id,text:m.text,nx:m.nx,ny:m.ny,hue:m.hue,t:Date.now()}]; cap(d.items,18); pm.setData(d); }catch(e){}};
+    EE.publishInk=(s)=>{
+      try{ const pi=getEl('ph-ink'); if(!pi) return;
+        const d={...pi.data}; d.items=[...d.items,{id:s.id,pts:s.pts,hue:s.hue}]; cap(d.items,30); pi.setData(d); }catch(e){}};
 
     EE.offline=false; EE.status('en red · playhtml');
 
-    // contador de presencia
-    const updCount=()=>{ const n=(window.cursors?.allColors?.length)||1; const el=document.getElementById('r-here'); if(el) el.textContent=n; };
-    try{ window.cursors?.on('allColors',updCount); }catch(e){} setInterval(updCount,3000); updCount();
+    // contador de presencia via cursors
+    const updCount=()=>{
+      try{ const cols=window.__playhtml_cursors?.colors||[]; const el=document.getElementById('r-here'); if(el) el.textContent=Math.max(1,cols.length); }catch(e){}};
+    setInterval(updCount,2500); updCount();
+
   }catch(err){
     console.warn('playhtml no disponible, corriendo en solitario:',err);
     EE.status('solo · sin red colaborativa');
