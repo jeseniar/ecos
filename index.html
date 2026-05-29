@@ -6,7 +6,7 @@
 <title>endless echo · v1 (en vivo, juntxs)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Redaction+35&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Sacramento&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
 <style>
   :root{
@@ -101,7 +101,7 @@
     <div class="src" id="r-src">conectando…</div>
   </div>
 
-  <div id="note" class="ov">tocá o arrastrá. lo que hacés acá le llega a quien también esté mirando.</div>
+  <div id="note" class="ov">toca o arrastra. lo que haces acá le llega a quien también esté mirando.</div>
 
   <div id="bar">
     <div class="seg" id="modo">
@@ -125,17 +125,16 @@
     <button id="proj">proyección</button>
   </div>
 
-  <div id="msgbox"><input id="msginput" maxlength="80" placeholder="dejá un eco escrito…" /><div class="hint">enter para soltarlo · esc para cerrar</div></div>
+  <div id="msgbox"><input id="msginput" maxlength="80" placeholder="deja un eco escrito…" /><div class="hint">enter para soltarlo · esc para cerrar</div></div>
 
   <div id="help"><div class="card">
     <h2>maneras de estar juntxs acá</h2>
     <ul>
       <li><b>cursores en vivo.</b> ves el cursor y el color de cada persona conectada en este momento — presencia pura, no queda guardada.</li>
-      <li><b>ecos compartidos.</b> cada toque tuyo lanza una onda por el campo de "e"… y aparece también en la pantalla de lxs demás. los últimos ecos quedan guardados y se re-sienten suavemente cuando alguien entra (los "mensajes anteriores" de tu cuaderno).</li>
-      <li><b>dibujos persistentes.</b> en modo dibujo dejás un trazo-cable que se queda en el espacio para quien venga después. cada trazo lleva tu color.</li>
-      <li><b>mensajes que derivan.</b> en modo mensaje soltás texto que flota por el campo y lo lee cualquiera que llegue.</li>
+      <li><b>ecos compartidos.</b> cada toque tuyo lanza una onda por el campo de "e"… y aparece también en la pantalla de los demás. los últimos ecos quedan guardados y se re-sienten suavemente cuando alguien entra.</li>
+      <li><b>dibujos persistentes.</b> en modo dibujo dejas un trazo-cable que se queda en el espacio para quien venga después. cada trazo lleva tu color.</li>
+      <li><b>mensajes que derivan.</b> en modo mensaje sueltas texto que flota por el campo y lo lee cualquiera que llegue.</li>
     </ul>
-    <p class="x" style="opacity:.6">todo esto corre sobre <b>playhtml</b> (sin backend propio). para verlo de verdad entre varias personas, subí este archivo a un hosting (netlify, vercel, github pages) y compartí el link.</p>
     <button id="help-close" class="chip" style="margin-top:16px">cerrar</button>
   </div></div>
 
@@ -209,7 +208,7 @@ function emitEcho(x,y,str){ localRipple(x,y,str,true); EE.publishEcho(x/width, y
 
 // ── p5 ───────────────────────────────────────────────────────────────────────
 function setup(){ const c=createCanvas(windowWidth,windowHeight); c.parent('canvas-wrap');
-  textAlign(CENTER,CENTER); textFont('"Space Mono", monospace'); computeGrid(); buildCables();
+  textAlign(CENTER,CENTER); textFont('Sacramento, cursive'); computeGrid(); buildCables();
   refreshLimaTime(); refreshWeather(); setInterval(refreshLimaTime,20000); setInterval(refreshWeather,300000); }
 function windowResized(){ resizeCanvas(windowWidth,windowHeight); computeGrid(); buildCables(); }
 function computeGrid(){ cols=Math.ceil(width/cell)+1; rows=Math.ceil(height/cell)+1;
@@ -376,8 +375,8 @@ function echoPing(str){ if(!actx||!echoGain)return; const now=actx.currentTime,g
 // ── controles ────────────────────────────────────────────────────────────────
 document.getElementById('modo').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   modo=b.dataset.m; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));
-  document.getElementById('note').textContent = modo==='eco'?'tocá o arrastrá. lo que hacés acá le llega a quien también esté mirando.'
-    : modo==='dibujo'?'arrastrá para dejar un trazo-cable que se queda para lxs demás.' : 'tocá donde quieras soltar tu mensaje y escribilo.'; });
+  document.getElementById('note').textContent = modo==='eco'?'toca o arrastra. lo que haces acá le llega a quien también esté mirando.'
+    : modo==='dibujo'?'arrastra para dejar un trazo-cable que se queda para los demás.' : 'toca donde quieres soltar tu mensaje y escríbelo.'; });
 document.getElementById('fase').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   fase=b.dataset.f; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));});
 document.getElementById('dens').addEventListener('input',e=>{cell=+e.target.value;computeGrid();});
