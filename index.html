@@ -128,12 +128,12 @@
   <div id="msgbox"><input id="msginput" maxlength="80" placeholder="deja un eco escrito…" /><div class="hint">enter para soltarlo · esc para cerrar</div></div>
 
   <div id="help"><div class="card">
-    <h2>maneras de estar juntxs acá</h2>
+    <h2>maneras de estar acá</h2>
     <ul>
-      <li><b>cursores en vivo.</b> ves el cursor y el color de cada persona conectada en este momento — presencia pura, no queda guardada.</li>
-      <li><b>ecos compartidos.</b> cada toque tuyo lanza una onda por el campo de "e"… y aparece también en la pantalla de los demás. los últimos ecos quedan guardados y se re-sienten suavemente cuando alguien entra.</li>
-      <li><b>dibujos persistentes.</b> en modo dibujo dejas un trazo-cable que se queda en el espacio para quien venga después. cada trazo lleva tu color.</li>
-      <li><b>mensajes que derivan.</b> en modo mensaje sueltas texto que flota por el campo y lo lee cualquiera que llegue.</li>
+      <li><b>cursores en vivo.</b> ves el cursor de cada persona conectada en este momento.</li>
+      <li><b>ecos compartidos.</b> cada toque lanza una onda que aparece en la pantalla de todos los que estén conectados ahora.</li>
+      <li><b>dibujos persistentes.</b> en modo dibujo dejas un trazo-cable que se queda para quien venga después.</li>
+      <li><b>mensajes que derivan.</b> en modo mensaje sueltas texto que flota por el campo de todos.</li>
     </ul>
     <button id="help-close" class="chip" style="margin-top:16px">cerrar</button>
   </div></div>
@@ -390,74 +390,66 @@ document.getElementById('help-close').addEventListener('click',()=>document.getE
 </script>
 
 <!-- ════════════════════ CAPA SOCIAL · playhtml ════════════════════ -->
-<!-- nodos can-play: playhtml sincroniza su estado entre visitantes -->
-<div id="ph-echoes" can-play style="display:none" data-default-data='{"items":[]}'></div>
-<div id="ph-ink"    can-play style="display:none" data-default-data='{"items":[]}'></div>
-<div id="ph-msgs"   can-play style="display:none" data-default-data='{"items":[]}'></div>
-
 <script type="module">
 import { playhtml } from "https://unpkg.com/playhtml";
 
+// 1. init con cursores + evento "echo" (transiente, como confetti)
 playhtml.init({
-  cursors: { enabled: true }
+  cursors: { enabled: true },
+  events: {
+    echo: {
+      type: "echo",
+      onEvent: (payload) => {
+        if(typeof localRipple==='function')
+          localRipple(payload.nx*width, payload.ny*height, payload.str||1, false);
+      }
+    }
+  }
 });
 
-// esperar a que playhtml termine de escanear los can-play del DOM
-setTimeout(()=>{
+// 2. datos persistentes a nivel de página (dibujos + mensajes)
+try{
+  const inkData = playhtml.createPageData("ee-ink",  { items: [] });
+  const msgData = playhtml.createPageData("ee-msgs", { items: [] });
+
+  inkData.onUpdate((data) => EE.applyInk(data.items||[]));
+  msgData.onUpdate((data) => EE.applyMsgs(data.items||[]));
+
+  EE.publishInk = (s) => {
+    inkData.setData((draft) => {
+      draft.items.push({ id:s.id, pts:s.pts, hue:s.hue });
+      if(draft.items.length > 30) draft.items.splice(0, draft.items.length - 30);
+    });
+  };
+
+  EE.publishMsg = (m) => {
+    msgData.setData((draft) => {
+      draft.items.push({ id:m.id, text:m.text, nx:m.nx, ny:m.ny, hue:m.hue, t:Date.now() });
+      if(draft.items.length > 18) draft.items.splice(0, draft.items.length - 18);
+    });
+  };
+
+  console.log('playhtml: page data conectado');
+}catch(err){
+  console.warn('playhtml: createPageData falló, dibujos y mensajes quedan locales:', err);
+}
+
+// 3. ecos via evento (no persiste, llega solo a quien está conectado ahora)
+EE.publishEcho = (nx, ny, str) => {
   try{
-    const echoEl = document.getElementById('ph-echoes');
-    const inkEl  = document.getElementById('ph-ink');
-    const msgEl  = document.getElementById('ph-msgs');
+    playhtml.dispatchPlayEvent({ type:"echo", eventPayload:{ nx, ny, str } });
+  }catch(e){}
+};
 
-    // playhtml guarda su instancia interna en el elemento
-    // leer datos compartidos por polling
-    setInterval(()=>{
-      try{
-        if(echoEl?.__playhtml?.data) EE.applyEchoes(echoEl.__playhtml.data.items||[]);
-        if(inkEl?.__playhtml?.data)  EE.applyInk(inkEl.__playhtml.data.items||[]);
-        if(msgEl?.__playhtml?.data)  EE.applyMsgs(msgEl.__playhtml.data.items||[]);
-      }catch(e){}
-    }, 900);
+EE.offline = false;
+EE.status('en red · playhtml');
 
-    const cap=(arr,n)=>{ if(arr.length>n) arr.splice(0,arr.length-n); };
-
-    EE.publishEcho=(nx,ny,str)=>{
-      try{
-        const ph=echoEl?.__playhtml; if(!ph) return;
-        const d=structuredClone(ph.data); d.items.push({id:EE.clientId+'-'+(EE.seq++),nx,ny,str,t:Date.now()}); cap(d.items,40);
-        ph.setData(d);
-      }catch(e){ console.warn('publishEcho',e); }
-    };
-    EE.publishMsg=(m)=>{
-      try{
-        const ph=msgEl?.__playhtml; if(!ph) return;
-        const d=structuredClone(ph.data); d.items.push({id:m.id,text:m.text,nx:m.nx,ny:m.ny,hue:m.hue,t:Date.now()}); cap(d.items,18);
-        ph.setData(d);
-      }catch(e){ console.warn('publishMsg',e); }
-    };
-    EE.publishInk=(s)=>{
-      try{
-        const ph=inkEl?.__playhtml; if(!ph) return;
-        const d=structuredClone(ph.data); d.items.push({id:s.id,pts:s.pts,hue:s.hue}); cap(d.items,30);
-        ph.setData(d);
-      }catch(e){ console.warn('publishInk',e); }
-    };
-
-    EE.offline=false;
-    EE.status('en red · playhtml');
-    console.log('playhtml conectado');
-  }catch(err){
-    console.warn('playhtml: error post-init',err);
-    EE.status('solo · sin red colaborativa');
-  }
-}, 2000);
-
-// presencia: contar cursores visibles en el DOM
+// 4. presencia
 setInterval(()=>{
   try{
-    const dots = document.querySelectorAll('[data-playhtml-cursor],.playhtml-cursor,.ph-cursor');
+    const n = document.querySelectorAll('svg[style*="pointer-events"]').length;
     const el = document.getElementById('r-here');
-    if(el) el.textContent = Math.max(1, dots.length + 1);
+    if(el) el.textContent = Math.max(1, n);
   }catch(e){}
 }, 3000);
 </script>
